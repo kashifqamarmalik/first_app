@@ -1,92 +1,107 @@
-import React, {useState, useEffect} from 'react';
-import {getAvatar} from '../hooks/APIHooks.js';
-import {StyleSheet, Image, AsyncStorage} from 'react-native';
-import {Container, Text, Content, Header, Card, CardItem, Left, Icon, Body, Button} from 'native-base';
+import React, {useEffect, useState} from 'react';
+import {
+  Container,
+  Content,
+  Card,
+  CardItem,
+  Text,
+  Body,
+  Button,
+  Icon,
+} from 'native-base';
+import {AsyncStorage} from 'react-native';
+import PropTypes from 'prop-types';
+import {fetchGET} from '../hooks/APIHooks';
+import AsyncImage from '../components/AsyncImage';
+import {Dimensions} from 'react-native';
+import {mediaURL} from '../constants/urlConst';
 
-const mediaURL = 'http://media.mw.metropolia.fi/wbma/uploads/';
+const deviceHeight = Dimensions.get('window').height;
+
 
 const Profile = (props) => {
-  const [user, setUser] = useState({});
+  const [user, setUser] = useState({
+    userdata: {},
+    avatar: 'https://',
+  });
+  const userToState = async () => {
+    try {
+      const userFromStorage = await AsyncStorage.getItem('user');
+      const uData = JSON.parse(userFromStorage);
+      const avatarPic = await fetchGET('tags', 'avatar_' + uData.user_id);
+      console.log('avpic', avatarPic);
+      let avPic = '';
+      if (avatarPic.length === 0) { // if avatar is not set
+        avPic = 'https://placekitten.com/1024/1024';
+      } else {
+        avPic = mediaURL + avatarPic[0].filename;
+      }
+      setUser((user) => (
+        {
+          userdata: uData,
+          avatar: avPic,
+        }));
+    } catch (e) {
+      console.log('Profile error: ', e.message);
+    }
+  };
+
+  useEffect(() => {
+    userToState();
+  }, []);
+
   const signOutAsync = async () => {
     await AsyncStorage.clear();
     props.navigation.navigate('Auth');
   };
-  const getUser = async () => {
-    const userJSON = await AsyncStorage.getItem('user');
-    console.log('userJSON', userJSON);
-    const user = JSON.parse(userJSON);
-    console.log('user', user);
-    const tagArray = await getAvatar(user.user_id);
-    console.log(tagArray);
-    if (tagArray.length > 0) {
-      user.avatarFilename = tagArray[0].filename;
-    }
-    console.log('newUser', user);
-    setUser(() => {
-      return user;
-    });
-  };
-  useEffect(() => {
-    getUser();
-  }, []);
+
+  console.log('ava', mediaURL + user.avatar);
   return (
     <Container>
       <Content>
         <Card>
-          <CardItem>
-            <Left>
-              <Icon name='person' />
-              <Text>Username: {user.username}</Text>
-            </Left>
-          </CardItem>
-          <CardItem style={{margin: 20}} cardBody>
-            {user.avatarFilename &&
-              <Image
-                style={{height: 300, width: null, flex: 1}}
-                source={{uri: mediaURL + user.avatarFilename}}
-              />
-            }
+          <CardItem header bordered>
+            <Icon name='person'/>
+            <Text>Username: {user.userdata.username}</Text>
           </CardItem>
           <CardItem>
             <Body>
-              <Text>Fullname: {user.full_name}</Text>
-              <Text>Email: {user.email}</Text>
+              <AsyncImage
+                style={{
+                  width: '100%',
+                  height: deviceHeight / 2,
+                }}
+                spinnerColor='#777'
+                source={{uri: user.avatar}}
+              />
             </Body>
           </CardItem>
-          <Button
-            full
-            style={{margin: 10}}
-            onPress={() => {
-              signOutAsync();
-            }
-            }
-          >
-            <Text>Logout</Text>
-          </Button>
+          <CardItem>
+            <Body>
+              <Text>Fullname: {user.userdata.full_name}</Text>
+              <Text numberOfLines={1}>email: {user.userdata.email}</Text>
+            </Body>
+          </CardItem>
+          <CardItem footer bordered>
+            <Body>
+              <Button full onPress={() => {
+                props.navigation.push('MyFiles');
+              }}>
+                <Text>My Files</Text>
+              </Button>
+              <Button full dark onPress={signOutAsync}>
+                <Text>Logout</Text>
+              </Button>
+            </Body>
+          </CardItem>
         </Card>
       </Content>
     </Container>
-
-  //   <View style={styles.container}>
-  //     <Text>username: {user.username}</Text>
-  //     <Text>Full Name: {user.full_name}</Text>
-  //     <Text>Email: {user.email}</Text>
-  //     <Button
-  //       title='Logout!'
-  //       onPress={signOutAsync}
-  //     />
-  //   </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 40,
-  },
-});
+Profile.propTypes = {
+  navigation: PropTypes.object,
+};
 
 export default Profile;

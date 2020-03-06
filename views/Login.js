@@ -4,7 +4,7 @@ import {Container, Header, Content, Form, Item, Input, Button, Text, Title, Badg
 import PropTypes from 'prop-types';
 import {login, register, usernameAvailable} from '../hooks/APIHooks.js';
 import useSignUpForm from '../hooks/LoginHooks';
-import FormTextInput from '../components/FormTextInupt.js';
+import FormTextInput from '../components/FormTextInput.js';
 
 const Login = (props) => {
   const [error, setError] = useState('');

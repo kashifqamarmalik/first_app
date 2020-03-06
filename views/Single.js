@@ -1,59 +1,96 @@
-import React from 'react';
-import {Image} from 'react-native';
-import {Container, Text, Content, Header, Card, CardItem, Left, Icon, Body} from 'native-base';
-const mediaURL = 'http://media.mw.metropolia.fi/wbma/uploads/';
+import React, {useState, useEffect} from 'react';
+import {
+  Container,
+  Content,
+  Card,
+  CardItem,
+  Left,
+  Body,
+  H3,
+  Icon,
+  Text,
+} from 'native-base';
+import PropTypes from 'prop-types';
+import AsyncImage from '../components/AsyncImage';
+import {Dimensions} from 'react-native';
+import {mediaURL} from '../constants/urlConst';
+import {Video} from 'expo-av';
+import {fetchGET} from '../hooks/APIHooks';
+import {AsyncStorage} from 'react-native';
+
+const deviceHeight = Dimensions.get('window').height;
 
 const Single = (props) => {
-  const {title, filename, description} = props.navigation.getParam('fileData');
+  const [user, setUser] = useState({});
+  const {navigation} = props;
+  const file = navigation.state.params.file;
+
+  const getUser = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const json = await fetchGET('users', file.user_id, token);
+      setUser(json);
+    } catch (e) {
+      console.log('getUser error', e);
+    }
+  };
+
+  useEffect(() => {
+    getUser();
+  }, []);
+
+
   return (
     <Container>
       <Content>
         <Card>
-          <CardItem style={{margin: 20}} cardBody>
-            <Image
-              style={{height: 300, width: null, flex: 1}}
-              source={{uri: mediaURL + filename}}
-            />
+          <CardItem>
+            {file.media_type === 'image' ? (
+                <AsyncImage
+                  style={{
+                    width: '100%',
+                    height: deviceHeight / 2,
+                  }}
+                  spinnerColor='#777'
+                  source={{uri: mediaURL + file.filename}}
+                />) :
+              (<Video
+                source={{uri: mediaURL + file.filename}}
+                resizeMode={'cover'}
+                useNativeControls
+                style={{
+                  width: '100%',
+                  height: deviceHeight / 2,
+                }}
+                onError={(e) => {
+                  console.log('video error', e);
+                }}
+                onLoad={(evt) => {
+                  console.log('onload', evt);
+                }}
+              />
+              )
+            }
           </CardItem>
           <CardItem>
             <Left>
-              <Icon name='image' />
+              <Icon name='image'/>
               <Body>
-                <Text>{title}</Text>
-                <Text>{description}</Text>
+                <H3>{file.title}</H3>
+                <Text>{file.description}</Text>
+                <Text>By {user.username}</Text>
               </Body>
             </Left>
           </CardItem>
         </Card>
       </Content>
     </Container>
-    // <View style={styles.container}>
-    //   <Text style={styles.title}>{title}</Text>
-    //   <Image
-    //     style={styles.image}
-    //     source={{uri: mediaURL + filename}}
-    //   />
-    //   {/* <Text>
-    //     Props Received : {JSON.stringify(props.navigation.getParam('fileData'))}
-    //   </Text> */}
-    // </View>
   );
 };
 
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     alignItems: 'center',
-//     paddingTop: 40,
-//   },
-//   image: {
-//     flex: 2,
-//     width: '100%',
-//     margin: 10,
-//   },
-//   title: {
-//     fontWeight: 'bold',
-//   },
-// });
+Single.propTypes = {
+  navigation: PropTypes.object,
+  file: PropTypes.object,
+};
 
 export default Single;
